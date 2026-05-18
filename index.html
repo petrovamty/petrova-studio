@@ -14,19 +14,22 @@
       --gold: #C9A96E;
       --gold-light: #E8D5B0;
       --gold-dark: #A07840;
-      --bg: #0E0E0E;
-      --bg2: #161616;
-      --bg3: #1E1E1E;
-      --bg4: #252525;
-      --border: rgba(201,169,110,0.15);
-      --border2: rgba(201,169,110,0.25);
-      --text: #F0EDE8;
-      --text2: #9A9590;
-      --text3: #5A5550;
-      --pending: #EF9F27;
-      --review: #6B9FD4;
-      --approved: #5BBF9A;
-      --rejected: #D47070;
+      --gold: #5A7060;
+      --gold-light: #8A9E8E;
+      --gold-dark: #3D4F42;
+      --bg: #F2F0EB;
+      --bg2: #FAFAF7;
+      --bg3: #EDEAE3;
+      --bg4: #E2DED6;
+      --border: rgba(90,112,96,0.15);
+      --border2: rgba(90,112,96,0.28);
+      --text: #1E1E1A;
+      --text2: #6B6B60;
+      --text3: #A0A098;
+      --pending: #B07820;
+      --review: #2A6FA8;
+      --approved: #3D6B4A;
+      --rejected: #A03030;
       --font-display: 'Cormorant Garamond', serif;
       --font-body: 'DM Sans', sans-serif;
       --r: 8px;
@@ -39,7 +42,7 @@
     #authScreen {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       background: var(--bg);
-      background-image: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,169,110,0.08) 0%, transparent 70%);
+      background-image: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(90,112,96,0.1) 0%, transparent 70%);
     }
     .auth-box {
       width: 380px; padding: 48px 40px;
@@ -424,9 +427,12 @@
   <div class="auth-box">
     <div class="auth-logo">
       <div class="auth-logo-mark">
-        <svg viewBox="0 0 26 26" fill="none"><path d="M13 2L24 8.5V17.5L13 24L2 17.5V8.5L13 2Z" fill="white" fill-opacity="0.92"/></svg>
+        <svg viewBox="0 0 26 26" fill="none">
+          <path d="M13 4 C8.5 4 5.5 7 5.5 11 C5.5 15 8.5 18 13 18 C17.5 18 20.5 15 20.5 11 C20.5 7 17.5 4 13 4Z" stroke="white" stroke-width="1.5" fill="none"/>
+          <line x1="9" y1="20" x2="17" y2="20" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
       </div>
-      <div class="auth-title">PETROVA</div>
+      <div class="auth-title" style="font-family:'Cormorant Garamond',serif;letter-spacing:0.12em;">PETROVA</div>
       <div class="auth-sub">Content Studio</div>
     </div>
     <div id="loginForm">
@@ -467,10 +473,13 @@
   <div class="topbar">
     <div class="logo">
       <div class="logo-mark">
-        <svg viewBox="0 0 26 26" fill="none"><path d="M13 2L24 8.5V17.5L13 24L2 17.5V8.5L13 2Z" fill="#0E0E0E" fill-opacity="0.85"/></svg>
+        <svg viewBox="0 0 30 30" fill="none">
+          <path d="M15 4 C9.5 4 6 8 6 13 C6 18 9.5 22 15 22 C20.5 22 24 18 24 13 C24 8 20.5 4 15 4Z" stroke="white" stroke-width="1.6" fill="none"/>
+          <line x1="10" y1="25" x2="20" y2="25" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
       </div>
       <div>
-        <div class="logo-text">PETROVA</div>
+        <div class="logo-text" style="letter-spacing:0.12em;">PETROVA</div>
         <div class="logo-sub">Content Studio</div>
       </div>
     </div>
@@ -576,6 +585,23 @@
           <div class="cal-day-name">Sáb</div>
         </div>
         <div class="cal-scroll"><div class="cal-grid" id="calGrid"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MEDIA PREVIEW MODAL -->
+<div class="modal-overlay" id="mediaPreviewModal" onclick="if(event.target===this)closeMediaPreview()">
+  <div class="modal" style="width:560px;max-width:95vw;">
+    <div class="modal-header">
+      <div class="modal-title" id="previewTitle">Vista previa</div>
+      <button class="modal-close" onclick="closeMediaPreview()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px 20px;">
+      <div id="previewContent" style="width:100%;max-height:420px;border-radius:var(--r);overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center;"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-primary" style="flex:1;" onclick="addPreviewToBoard('pending')">+ Añadir a Pendiente</button>
+        <button class="btn-sec" style="flex:1;" onclick="addPreviewToBoard('review')">+ Añadir a Revisión</button>
       </div>
     </div>
   </div>
@@ -894,15 +920,18 @@ async function uploadFile(file, clientId) {
   return data;
 }
 
+// ─── MEDIA INDEX MAP (for drag by index) ─────────────────────────────────────
+let mediaIndexMap = {};
+
 // ─── SIDEBAR RENDER ──────────────────────────────────────────────────────────
 function renderSidebar(query) {
   const body = document.getElementById('sidebarBody');
+  mediaIndexMap = {};
   let html = '';
   const filtered = query ? mediaItems.filter(m => m.name.toLowerCase().includes(query.toLowerCase())) : null;
 
   clients.forEach(client => {
     const items = (filtered || mediaItems).filter(m => m.client_id === client.id);
-    const open = true;
     html += `<div class="folder">
       <div class="folder-hdr" onclick="toggleFolder('f${client.id}','chev${client.id}')">
         <span class="folder-icon">📁</span>
@@ -913,9 +942,11 @@ function renderSidebar(query) {
       <div id="f${client.id}">`;
     if (items.length > 0) {
       html += '<div class="media-grid">';
-      items.forEach(m => {
+      items.forEach((m, idx) => {
+        const key = `mi_${client.id.replace(/-/g,'')}_${idx}`;
+        mediaIndexMap[key] = m.id;
         const isVideo = m.type === 'video';
-        html += `<div class="media-item" draggable="true" ondragstart="startMediaDrag(event,'${m.id}')" title="${esc(m.name)}">`;
+        html += `<div class="media-item" draggable="true" data-mkey="${key}" title="${esc(m.name)}">`;
         if (isVideo) {
           html += `<video src="${m.url}" muted></video><div class="media-badge">▶ VID</div>`;
         } else {
@@ -943,6 +974,22 @@ function renderSidebar(query) {
   }
 
   body.innerHTML = html;
+
+  // Attach drag and click events after render
+  body.querySelectorAll('.media-item').forEach(el => {
+    const key = el.dataset.mkey;
+    el.addEventListener('dragstart', function(e) {
+      const mediaId = mediaIndexMap[key];
+      dragPayload = { type: 'media', id: mediaId };
+      draggingCardId = null;
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', mediaId);
+    });
+    el.addEventListener('click', function() {
+      const mediaId = mediaIndexMap[key];
+      openMediaPreview(mediaId);
+    });
+  });
 }
 
 function filterMedia(q) { renderSidebar(q || undefined); }
@@ -969,6 +1016,46 @@ async function handleUpload(e, clientId) {
   renderSidebar();
   showToast('success', `${files.length} archivo(s) subido(s)`);
   e.target.value = '';
+}
+
+// ─── MEDIA PREVIEW ───────────────────────────────────────────────────────────
+let previewMediaId = null;
+
+function openMediaPreview(mediaId) {
+  previewMediaId = mediaId;
+  const m = mediaItems.find(x => x.id === mediaId);
+  if (!m) return;
+  document.getElementById('previewTitle').textContent = m.name;
+  const content = document.getElementById('previewContent');
+  if (m.type === 'video') {
+    content.innerHTML = `<video src="${m.url}" controls style="width:100%;max-height:420px;object-fit:contain;"></video>`;
+  } else {
+    content.innerHTML = `<img src="${m.url}" style="width:100%;max-height:420px;object-fit:contain;" alt="">`;
+  }
+  document.getElementById('mediaPreviewModal').classList.add('open');
+}
+
+function closeMediaPreview() {
+  document.getElementById('mediaPreviewModal').classList.remove('open');
+  document.getElementById('previewContent').innerHTML = '';
+  previewMediaId = null;
+}
+
+async function addPreviewToBoard(status) {
+  if (!previewMediaId) return;
+  const media = mediaItems.find(m => m.id === previewMediaId);
+  if (!media) return;
+  const { data, error } = await sb.from('cards').insert({
+    title: media.name.replace(/\.[^.]+$/, ''),
+    media_id: media.id, client_id: media.client_id,
+    status, user_id: currentUser.id
+  }).select().single();
+  if (!error && data) {
+    cards.unshift(data);
+    renderBoard();
+    showToast('success', 'Añadido al board ✓');
+  }
+  closeMediaPreview();
 }
 
 // ─── DRAG & DROP ─────────────────────────────────────────────────────────────
