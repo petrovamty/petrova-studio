@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petrova Content Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A96E;
+      --gold-light: #E8D5B0;
+      --gold-dark: #A07840;
+      --bg: #0E0E0E;
+      --bg2: #161616;
+      --bg3: #1E1E1E;
+      --bg4: #252525;
+      --border: rgba(201,169,110,0.15);
+      --border2: rgba(201,169,110,0.25);
+      --text: #F0EDE8;
+      --text2: #9A9590;
+      --text3: #5A5550;
+      --pending: #EF9F27;
+      --review: #6B9FD4;
+      --approved: #5BBF9A;
+      --rejected: #D47070;
+      --font-display: 'Cormorant Garamond', serif;
+      --font-body: 'DM Sans', sans-serif;
+      --r: 8px;
+      --rl: 12px;
+    }
+
+    html, body { height: 100%; font-family: var(--font-body); background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* AUTH SCREEN */
+    #authScreen {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,169,110,0.08) 0%, transparent 70%);
+    }
+    .auth-box {
+      width: 380px; padding: 48px 40px;
+      border: 0.5px solid var(--border2);
+      border-radius: 16px;
+      background: var(--bg2);
+    }
+    .auth-logo { text-align: center; margin-bottom: 36px; }
+    .auth-logo-mark {
+      width: 48px; height: 48px; background: var(--gold); border-radius: 10px;
+      display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;
+    }
+    .auth-logo-mark svg { width: 26px; height: 26px; }
+    .auth-title { font-family: var(--font-display); font-size: 28px; font-weight: 500; color: var(--text); letter-spacing: 0.05em; }
+    .auth-sub { font-size: 12px; color: var(--text2); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+    .auth-field { margin-bottom: 14px; }
+    .auth-label { display: block; font-size: 11px; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    .auth-input {
+      width: 100%; padding: 11px 14px; font-size: 14px; font-family: var(--font-body);
+      background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--r);
+      color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .auth-input:focus { border-color: var(--gold); }
+    .auth-btn {
+      width: 100%; padding: 12px; font-size: 14px; font-family: var(--font-body); font-weight: 500;
+      background: var(--gold); color: #0E0E0E; border: none; border-radius: var(--r);
+      cursor: pointer; margin-top: 8px; transition: background 0.2s; letter-spacing: 0.03em;
+    }
+    .auth-btn:hover { background: var(--gold-dark); color: var(--text); }
+    .auth-toggle { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text2); }
+    .auth-toggle a { color: var(--gold); cursor: pointer; text-decoration: none; }
+    .auth-error { font-size: 12px; color: var(--rejected); margin-top: 8px; text-align: center; min-height: 16px; }
+
+    /* APP */
+    #app { display: none; height: 100vh; flex-direction: column; }
+
+    /* TOPBAR */
+    .topbar {
+      height: 54px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; border-bottom: 0.5px solid var(--border);
+      background: var(--bg2); flex-shrink: 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-mark {
+      width: 30px; height: 30px; background: var(--gold); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 17px; height: 17px; }
+    .logo-text { font-family: var(--font-display); font-size: 18px; font-weight: 500; letter-spacing: 0.06em; color: var(--text); }
+    .logo-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; }
+    .nav-tabs { display: flex; gap: 2px; }
+    .nav-tab {
+      padding: 6px 14px; border-radius: var(--r); font-size: 13px; cursor: pointer;
+      color: var(--text2); border: none; background: none; font-family: var(--font-body);
+      display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .nav-tab.active { background: var(--bg4); color: var(--gold); }
+    .nav-tab:hover:not(.active) { background: var(--bg3); color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .user-pill {
+      display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px;
+      background: var(--bg3); border: 0.5px solid var(--border); border-radius: 20px; cursor: pointer;
+    }
+    .user-avatar {
+      width: 26px; height: 26px; border-radius: 50%; background: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 500; color: #0E0E0E;
+    }
+    .user-name { font-size: 12px; color: var(--text2); }
+    .logout-btn {
+      padding: 5px 10px; font-size: 12px; border-radius: var(--r); border: 0.5px solid var(--border);
+      background: none; color: var(--text3); cursor: pointer; font-family: var(--font-body);
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--rejected); color: var(--rejected); }
+
+    /* MAIN CONTENT */
+    .content { flex: 1; display: flex; overflow: hidden; }
+
+    /* SIDEBAR LIBRARY */
+    .sidebar {
+      width: 256px; flex-shrink: 0; background: var(--bg2); border-right: 0.5px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sidebar-header { padding: 14px 16px 10px; border-bottom: 0.5px solid var(--border); }
+    .sidebar-title { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+    .sidebar-search {
+      width: 100%; padding: 7px 10px; font-size: 12px; font-family: var(--font-body);
+      background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--r);
+      color: var(--text); outline: none;
+    }
+    .sidebar-search:focus { border-color: var(--gold); }
+    .sidebar-body { flex: 1; overflow-y: auto; padding: 8px; }
+    .sidebar-body::-webkit-scrollbar { width: 4px; }
+    .sidebar-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    .folder { margin-bottom: 4px; }
+    .folder-hdr {
+      display: flex; align-items: center; gap: 7px; padding: 7px 8px;
+      border-radius: var(--r); cursor: pointer; transition: background 0.1s;
+    }
+    .folder-hdr:hover { background: var(--bg3); }
+    .folder-icon { font-size: 14px; color: var(--gold); }
+    .folder-name { flex: 1; font-size: 13px; color: var(--text); font-weight: 400; }
+    .folder-cnt { font-size: 11px; color: var(--text3); }
+    .folder-chev { font-size: 12px; color: var(--text3); transition: transform 0.2s; }
+    .folder-chev.open { transform: rotate(90deg); }
+
+    .media-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 6px 4px; }
+    .media-item {
+      aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: grab;
+      border: 1.5px solid transparent; transition: border-color 0.15s, transform 0.1s;
+      position: relative; background: var(--bg3);
+    }
+    .media-item:hover { border-color: var(--gold); transform: scale(1.04); }
+    .media-item img, .media-item video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .media-badge {
+      position: absolute; bottom: 3px; right: 3px; background: rgba(0,0,0,0.7);
+      border-radius: 3px; padding: 1px 5px; font-size: 9px; color: var(--gold-light);
+      display: flex; align-items: center; gap: 2px;
+    }
+    .media-loading { display: flex; align-items: center; justify-content: center; height: 100%; }
+    .media-loading::after { content: ''; width: 16px; height: 16px; border: 1.5px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    .upload-zone {
+      margin: 8px 4px; padding: 14px 8px; border: 1px dashed var(--border2); border-radius: var(--r);
+      text-align: center; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
+    }
+    .upload-zone:hover { border-color: var(--gold); background: rgba(201,169,110,0.05); }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-zone-text { font-size: 12px; color: var(--text3); }
+    .upload-zone-text span { color: var(--gold); }
+    .upload-progress {
+      height: 2px; background: var(--border); border-radius: 1px; margin-top: 8px; overflow: hidden; display: none;
+    }
+    .upload-progress-bar { height: 100%; background: var(--gold); border-radius: 1px; transition: width 0.3s; }
+
+    .new-client-btn {
+      margin: 4px; padding: 8px; font-size: 12px; font-family: var(--font-body);
+      border: 0.5px dashed var(--border); border-radius: var(--r);
+      background: none; color: var(--text3); cursor: pointer; width: calc(100% - 8px);
+      transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .new-client-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* MAIN BOARD */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .main-toolbar {
+      display: flex; align-items: center; justify-content: space-between; padding: 10px 16px;
+      background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 10px; }
+    .project-select {
+      font-size: 13px; font-family: var(--font-body); color: var(--text);
+      background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--r);
+      padding: 6px 10px; cursor: pointer; outline: none;
+    }
+    .project-select:focus { border-color: var(--gold); }
+    .drag-hint { font-size: 12px; color: var(--text3); }
+    .toolbar-right { display: flex; gap: 6px; }
+    .tb-btn {
+      padding: 6px 13px; font-size: 12px; font-family: var(--font-body); border-radius: var(--r);
+      cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text2);
+      display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+    }
+    .tb-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+    .tb-btn.gold { background: var(--gold); color: #0E0E0E; border-color: var(--gold); font-weight: 500; }
+    .tb-btn.gold:hover { background: var(--gold-dark); color: var(--text); }
+
+    /* KANBAN */
+    #kanbanView { display: flex; flex: 1; overflow: hidden; }
+    .kanban { display: flex; gap: 12px; padding: 14px; flex: 1; overflow-x: auto; overflow-y: hidden; align-items: flex-start; }
+    .kanban::-webkit-scrollbar { height: 6px; }
+    .kanban::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    .lane {
+      display: flex; flex-direction: column; width: 210px; flex-shrink: 0;
+      background: var(--bg2); border-radius: var(--rl); border: 0.5px solid var(--border);
+      max-height: 100%; overflow: hidden;
+    }
+    .lane-hdr {
+      padding: 11px 13px 9px; display: flex; align-items: center; gap: 8px;
+      border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+    }
+    .lane-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .lane-title { font-size: 12px; font-weight: 500; color: var(--text); flex: 1; letter-spacing: 0.03em; }
+    .lane-cnt {
+      font-size: 11px; color: var(--text3); background: var(--bg3);
+      border-radius: 10px; padding: 1px 7px; border: 0.5px solid var(--border);
+    }
+    .lane-cards {
+      flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px;
+      min-height: 100px; transition: background 0.15s;
+    }
+    .lane-cards::-webkit-scrollbar { width: 3px; }
+    .lane-cards::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .lane-cards.drag-over { background: rgba(201,169,110,0.06); border-radius: 8px; }
+    .drop-hint {
+      text-align: center; padding: 20px 8px; font-size: 11px; color: var(--text3);
+      border: 1px dashed var(--border); border-radius: var(--r);
+    }
+
+    /* CARD */
+    .kcard {
+      background: var(--bg3); border-radius: var(--r); border: 0.5px solid var(--border);
+      overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+    }
+    .kcard:hover { border-color: var(--border2); transform: translateY(-1px); }
+    .kcard-thumb { width: 100%; aspect-ratio: 16/10; overflow: hidden; position: relative; background: var(--bg4); }
+    .kcard-thumb img, .kcard-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .kcard-thumb-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    .video-badge {
+      position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.7);
+      border-radius: 4px; padding: 2px 7px; font-size: 10px; color: var(--gold-light);
+    }
+    .kcard-body { padding: 9px 11px 6px; }
+    .kcard-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kcard-meta { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+    .kcard-date { font-size: 10px; color: var(--text3); }
+    .kcard-note {
+      margin: 4px 11px 8px; padding: 5px 8px;
+      background: rgba(201,169,110,0.07); border-left: 2px solid var(--gold);
+      border-radius: 0 4px 4px 0; font-size: 10px; color: var(--text2); font-style: italic;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .kcard-actions { display: flex; gap: 4px; padding: 0 11px 9px; }
+    .kcard-btn {
+      flex: 1; padding: 5px; font-size: 11px; font-family: var(--font-body); border-radius: 5px;
+      cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text2);
+      transition: all 0.12s;
+    }
+    .kcard-btn:hover { background: var(--bg4); }
+    .kcard-btn.approve { color: var(--approved); border-color: rgba(91,191,154,0.3); }
+    .kcard-btn.approve:hover { background: rgba(91,191,154,0.1); }
+    .kcard-btn.reject { color: var(--rejected); border-color: rgba(212,112,112,0.3); }
+    .kcard-btn.reject:hover { background: rgba(212,112,112,0.1); }
+
+    /* CALENDAR VIEW */
+    #calendarView { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+      background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+    }
+    .cal-month { font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--text); }
+    .cal-nav { display: flex; gap: 4px; }
+    .cal-nav button {
+      padding: 5px 12px; font-size: 14px; border-radius: var(--r); border: 0.5px solid var(--border);
+      background: none; cursor: pointer; color: var(--text2); font-family: var(--font-body);
+      transition: all 0.15s;
+    }
+    .cal-nav button:hover { background: var(--bg3); color: var(--gold); border-color: var(--border2); }
+    .cal-days-header {
+      display: grid; grid-template-columns: repeat(7,1fr); padding: 8px 10px 0; gap: 4px;
+      background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+    }
+    .cal-day-name { font-size: 11px; color: var(--text3); text-align: center; padding: 6px 0; font-weight: 500; letter-spacing: 0.04em; }
+    .cal-scroll { flex: 1; overflow-y: auto; padding: 8px 10px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+    .cal-cell {
+      background: var(--bg2); border-radius: var(--r); border: 0.5px solid var(--border);
+      padding: 7px; min-height: 80px;
+    }
+    .cal-cell.today { border-color: var(--gold); }
+    .cal-num { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+    .cal-cell.today .cal-num { color: var(--gold); font-weight: 500; }
+    .cal-cell.other-month { opacity: 0.35; }
+    .cal-event {
+      font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+    }
+    .cal-event.approved { background: rgba(91,191,154,0.15); color: var(--approved); }
+    .cal-event.pending { background: rgba(239,159,39,0.15); color: var(--pending); }
+    .cal-event.review { background: rgba(107,159,212,0.15); color: var(--review); }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2); border-radius: 14px; border: 0.5px solid var(--border2);
+      width: 480px; max-height: 88vh; overflow-y: auto; animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .modal::-webkit-scrollbar { width: 4px; }
+    .modal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .modal-header {
+      padding: 18px 22px 14px; border-bottom: 0.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg2); z-index: 1;
+    }
+    .modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--text); }
+    .modal-close { border: none; background: none; cursor: pointer; color: var(--text3); font-size: 20px; padding: 2px; transition: color 0.15s; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-thumb {
+      width: 100%; height: 200px; border-radius: var(--r); overflow: hidden; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-thumb img, .modal-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.07em; text-transform: uppercase; }
+    .field-input, .field-select, .field-textarea {
+      padding: 9px 12px; font-size: 13px; font-family: var(--font-body);
+      background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--r);
+      color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .field-input:focus, .field-select:focus, .field-textarea:focus { border-color: var(--gold); }
+    .field-textarea { resize: vertical; min-height: 80px; }
+    .note-block {
+      background: rgba(201,169,110,0.06); border: 0.5px solid rgba(201,169,110,0.2);
+      border-radius: var(--r); padding: 12px 14px;
+    }
+    .note-block .field-label { color: var(--gold); margin-bottom: 6px; }
+    .note-block .field-textarea { background: rgba(201,169,110,0.05); border-color: rgba(201,169,110,0.2); }
+    .note-block .field-textarea:focus { border-color: var(--gold); }
+    .status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 500;
+    }
+    .sb-pending { background: rgba(239,159,39,0.15); color: var(--pending); }
+    .sb-review { background: rgba(107,159,212,0.15); color: var(--review); }
+    .sb-approved { background: rgba(91,191,154,0.15); color: var(--approved); }
+    .sb-rejected { background: rgba(212,112,112,0.15); color: var(--rejected); }
+    .modal-footer {
+      padding: 14px 22px 18px; display: flex; gap: 8px; justify-content: flex-end;
+      border-top: 0.5px solid var(--border);
+    }
+    .btn-sec { padding: 8px 18px; font-size: 13px; font-family: var(--font-body); border-radius: var(--r); border: 0.5px solid var(--border2); background: none; cursor: pointer; color: var(--text2); transition: all 0.15s; }
+    .btn-sec:hover { background: var(--bg3); color: var(--text); }
+    .btn-danger { padding: 8px 18px; font-size: 13px; font-family: var(--font-body); border-radius: var(--r); border: 0.5px solid rgba(212,112,112,0.3); background: rgba(212,112,112,0.1); cursor: pointer; color: var(--rejected); transition: all 0.15s; }
+    .btn-danger:hover { background: rgba(212,112,112,0.2); }
+    .btn-primary { padding: 8px 20px; font-size: 13px; font-family: var(--font-body); border-radius: var(--r); border: none; background: var(--gold); color: #0E0E0E; cursor: pointer; font-weight: 500; transition: background 0.15s; }
+    .btn-primary:hover { background: var(--gold-dark); color: var(--text); }
+
+    /* NEW CLIENT MODAL */
+    .mini-modal {
+      background: var(--bg2); border-radius: 12px; border: 0.5px solid var(--border2);
+      width: 340px; padding: 22px 24px; animation: modalIn 0.2s ease;
+    }
+    .mini-modal-title { font-family: var(--font-display); font-size: 18px; color: var(--text); margin-bottom: 16px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; z-index: 300;
+      background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--r);
+      padding: 11px 18px; font-size: 13px; color: var(--text);
+      display: flex; align-items: center; gap: 9px;
+      transform: translateY(60px); opacity: 0; transition: all 0.25s; pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .toast-dot.success { background: var(--approved); }
+    .toast-dot.error { background: var(--rejected); }
+    .toast-dot.info { background: var(--gold); }
+
+    /* LOADING */
+    .loading-screen {
+      position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    .loading-spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* EMPTY STATE */
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); padding: 40px; text-align: center; }
+    .empty-state-icon { font-size: 40px; opacity: 0.3; }
+    .empty-state-title { font-size: 14px; color: var(--text2); }
+    .empty-state-sub { font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-spinner"></div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen" style="display:none;">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 2L24 8.5V17.5L13 24L2 17.5V8.5L13 2Z" fill="white" fill-opacity="0.92"/></svg>
+      </div>
+      <div class="auth-title">PETROVA</div>
+      <div class="auth-sub">Content Studio</div>
+    </div>
+    <div id="loginForm">
+      <div class="auth-field">
+        <label class="auth-label">Correo electrónico</label>
+        <input class="auth-input" type="email" id="loginEmail" placeholder="tu@email.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Contraseña</label>
+        <input class="auth-input" type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="auth-btn" onclick="doLogin()">Entrar</button>
+      <div class="auth-toggle">¿No tienes cuenta? <a onclick="showRegister()">Crear cuenta</a></div>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="auth-field">
+        <label class="auth-label">Nombre</label>
+        <input class="auth-input" type="text" id="regName" placeholder="Tu nombre">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Correo electrónico</label>
+        <input class="auth-input" type="email" id="regEmail" placeholder="tu@email.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Contraseña</label>
+        <input class="auth-input" type="password" id="regPassword" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <div class="auth-error" id="registerError"></div>
+      <button class="auth-btn" onclick="doRegister()">Crear cuenta</button>
+      <div class="auth-toggle">¿Ya tienes cuenta? <a onclick="showLogin()">Iniciar sesión</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M13 2L24 8.5V17.5L13 24L2 17.5V8.5L13 2Z" fill="#0E0E0E" fill-opacity="0.85"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">PETROVA</div>
+        <div class="logo-sub">Content Studio</div>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchView('kanban',this)">⬛ Board</button>
+      <button class="nav-tab" onclick="switchView('calendar',this)">📅 Calendario</button>
+    </div>
+    <div class="topbar-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">—</div>
+        <span class="user-name" id="userName">—</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Biblioteca de medios</div>
+        <input class="sidebar-search" type="text" placeholder="Buscar..." oninput="filterMedia(this.value)" id="mediaSearch">
+      </div>
+      <div class="sidebar-body" id="sidebarBody">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="main-toolbar">
+        <div class="toolbar-left">
+          <select class="project-select" id="projectFilter" onchange="applyFilter()">
+            <option value="all">Todos los proyectos</option>
+          </select>
+          <span class="drag-hint">← Arrastra medios al board</span>
+        </div>
+        <div class="toolbar-right">
+          <button class="tb-btn" onclick="exportReport()">↓ Exportar</button>
+          <button class="tb-btn gold" onclick="openNewCardModal()">+ Nueva tarjeta</button>
+        </div>
+      </div>
+
+      <!-- KANBAN -->
+      <div id="kanbanView">
+        <div class="kanban" id="kanban">
+          <div class="lane">
+            <div class="lane-hdr">
+              <div class="lane-dot" style="background:var(--pending)"></div>
+              <div class="lane-title">Pendiente</div>
+              <div class="lane-cnt" id="cnt-pending">0</div>
+            </div>
+            <div class="lane-cards" id="lane-pending" ondragover="ev.preventDefault()" ondrop="dropOnLane(event,'pending')" ondragenter="laneEnter(event)" ondragleave="laneLeave(event)">
+              <div class="drop-hint">Arrastra medios aquí</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="lane-hdr">
+              <div class="lane-dot" style="background:var(--review)"></div>
+              <div class="lane-title">En revisión</div>
+              <div class="lane-cnt" id="cnt-review">0</div>
+            </div>
+            <div class="lane-cards" id="lane-review" ondragover="event.preventDefault()" ondrop="dropOnLane(event,'review')" ondragenter="laneEnter(event)" ondragleave="laneLeave(event)">
+              <div class="drop-hint">Arrastra medios aquí</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="lane-hdr">
+              <div class="lane-dot" style="background:var(--approved)"></div>
+              <div class="lane-title">Aprobado</div>
+              <div class="lane-cnt" id="cnt-approved">0</div>
+            </div>
+            <div class="lane-cards" id="lane-approved" ondragover="event.preventDefault()" ondrop="dropOnLane(event,'approved')" ondragenter="laneEnter(event)" ondragleave="laneLeave(event)">
+              <div class="drop-hint">Arrastra medios aquí</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="lane-hdr">
+              <div class="lane-dot" style="background:var(--rejected)"></div>
+              <div class="lane-title">Rechazado</div>
+              <div class="lane-cnt" id="cnt-rejected">0</div>
+            </div>
+            <div class="lane-cards" id="lane-rejected" ondragover="event.preventDefault()" ondrop="dropOnLane(event,'rejected')" ondragenter="laneEnter(event)" ondragleave="laneLeave(event)">
+              <div class="drop-hint">Arrastra medios aquí</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div id="calendarView">
+        <div class="cal-header">
+          <div class="cal-month" id="calMonth"></div>
+          <div class="cal-nav">
+            <button onclick="changeMonth(-1)">‹</button>
+            <button onclick="changeMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-days-header">
+          <div class="cal-day-name">Dom</div><div class="cal-day-name">Lun</div>
+          <div class="cal-day-name">Mar</div><div class="cal-day-name">Mié</div>
+          <div class="cal-day-name">Jue</div><div class="cal-day-name">Vie</div>
+          <div class="cal-day-name">Sáb</div>
+        </div>
+        <div class="cal-scroll"><div class="cal-grid" id="calGrid"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CARD DETAIL MODAL -->
+<div class="modal-overlay" id="cardModal" onclick="closeCardModalBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Detalle</div>
+      <button class="modal-close" onclick="closeCardModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-thumb" id="modalThumb"></div>
+      <div class="field">
+        <div class="field-label">Estado</div>
+        <div class="status-row">
+          <span class="status-badge" id="modalStatusBadge"></span>
+          <select class="field-select" id="modalStatusSelect" style="font-size:12px;padding:4px 8px;">
+            <option value="pending">Pendiente</option>
+            <option value="review">En revisión</option>
+            <option value="approved">Aprobado</option>
+            <option value="rejected">Rechazado</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Proyecto / Cliente</div>
+        <div style="font-size:13px;color:var(--text2);" id="modalClient">—</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Caption para Instagram</div>
+        <textarea class="field-textarea" id="modalCaption" placeholder="Escribe el caption del post..."></textarea>
+      </div>
+      <div class="field">
+        <div class="field-label">Fecha programada de publicación</div>
+        <input class="field-input" type="date" id="modalDate">
+      </div>
+      <div class="note-block">
+        <div class="field-label">🔒 Nota interna del equipo</div>
+        <textarea class="field-textarea" id="modalNote" placeholder="Solo visible para el equipo Petrova..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sec" onclick="closeCardModal()">Cancelar</button>
+      <button class="btn-danger" onclick="deleteCard()">Eliminar</button>
+      <button class="btn-primary" onclick="saveCard()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CLIENT MODAL -->
+<div class="modal-overlay" id="newClientModal" onclick="if(event.target===this)closeNewClientModal()">
+  <div class="mini-modal">
+    <div class="mini-modal-title">Nuevo cliente</div>
+    <div class="field" style="margin-bottom:14px;">
+      <div class="field-label">Nombre del cliente</div>
+      <input class="field-input" type="text" id="newClientName" placeholder="Ej: Marca XYZ" onkeydown="if(event.key==='Enter')saveNewClient()">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn-sec" onclick="closeNewClientModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveNewClient()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CARD MODAL -->
+<div class="modal-overlay" id="newCardModal" onclick="if(event.target===this)closeNewCardModal()">
+  <div class="mini-modal" style="width:380px;">
+    <div class="mini-modal-title">Nueva tarjeta</div>
+    <div class="field" style="margin-bottom:12px;">
+      <div class="field-label">Nombre</div>
+      <input class="field-input" type="text" id="ncTitle" placeholder="Nombre del contenido">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <div class="field-label">Proyecto</div>
+      <select class="field-select" id="ncClient"></select>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <div class="field-label">Estado inicial</div>
+      <select class="field-select" id="ncStatus">
+        <option value="pending">Pendiente</option>
+        <option value="review">En revisión</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn-sec" onclick="closeNewCardModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveNewCard()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-dot" id="toastDot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://geydmcjffyvibqnisuyy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nklfTD6kn2wyajN4oRtIiA_4LKCAnEv';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let clients = [];
+let cards = [];
+let mediaItems = [];
+let activeCardId = null;
+let dragPayload = null;
+let draggingCardId = null;
+let calOffset = 0;
+let filterClient = 'all';
+let toastTimer = null;
+
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await startApp();
+  } else {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
+  }
+}
+
+async function startApp() {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const email = currentUser.email || '';
+  const initials = email.substring(0,2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userName').textContent = email.split('@')[0];
+  await ensureTables();
+  await loadClients();
+  await loadCards();
+  await loadMedia();
+  renderBoard();
+  renderSidebar();
+}
+
+// ─── DB SETUP ─────────────────────────────────────────────────────────────────
+async function ensureTables() {
+  // Tables should exist from SQL setup. We just try fetching.
+  try {
+    await sb.from('clients').select('id').limit(1);
+    await sb.from('cards').select('id').limit(1);
+    await sb.from('media').select('id').limit(1);
+  } catch(e) {}
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+}
+function showRegister() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw = document.getElementById('loginPassword').value;
+  document.getElementById('loginError').textContent = '';
+  if (!email || !pw) { document.getElementById('loginError').textContent = 'Completa todos los campos'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { document.getElementById('loginError').textContent = error.message; return; }
+  currentUser = data.user;
+  await startApp();
+}
+
+async function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pw = document.getElementById('regPassword').value;
+  document.getElementById('registerError').textContent = '';
+  if (!name || !email || !pw) { document.getElementById('registerError').textContent = 'Completa todos los campos'; return; }
+  if (pw.length < 6) { document.getElementById('registerError').textContent = 'Mínimo 6 caracteres'; return; }
+  const { data, error } = await sb.auth.signUp({ email, password: pw, options: { data: { full_name: name } } });
+  if (error) { document.getElementById('registerError').textContent = error.message; return; }
+  currentUser = data.user;
+  showToast('success', 'Cuenta creada. Revisa tu email para confirmar.');
+  showLogin();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser = null; clients = []; cards = []; mediaItems = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+}
+
+// ─── CLIENTS ──────────────────────────────────────────────────────────────────
+async function loadClients() {
+  const { data } = await sb.from('clients').select('*').order('name');
+  clients = data || [];
+  rebuildProjectFilter();
+}
+
+function rebuildProjectFilter() {
+  const sel = document.getElementById('projectFilter');
+  const nc = document.getElementById('ncClient');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">Todos los proyectos</option>';
+  if (nc) nc.innerHTML = '';
+  clients.forEach(c => {
+    sel.innerHTML += `<option value="${c.id}">${esc(c.name)}</option>`;
+    if (nc) nc.innerHTML += `<option value="${c.id}">${esc(c.name)}</option>`;
+  });
+  if (cur) sel.value = cur;
+}
+
+function openNewClientModal() {
+  document.getElementById('newClientName').value = '';
+  document.getElementById('newClientModal').classList.add('open');
+  setTimeout(() => document.getElementById('newClientName').focus(), 100);
+}
+function closeNewClientModal() { document.getElementById('newClientModal').classList.remove('open'); }
+
+async function saveNewClient() {
+  const name = document.getElementById('newClientName').value.trim();
+  if (!name) return;
+  const { data, error } = await sb.from('clients').insert({ name, user_id: currentUser.id }).select().single();
+  if (error) { showToast('error', 'Error al crear cliente'); return; }
+  clients.push(data);
+  rebuildProjectFilter();
+  renderSidebar();
+  closeNewClientModal();
+  showToast('success', `Cliente "${name}" creado`);
+}
+
+// ─── CARDS ────────────────────────────────────────────────────────────────────
+async function loadCards() {
+  const { data } = await sb.from('cards').select('*').order('created_at', { ascending: false });
+  cards = data || [];
+}
+
+async function saveCard() {
+  const c = cards.find(x => x.id === activeCardId);
+  if (!c) return;
+  c.caption = document.getElementById('modalCaption').value;
+  c.note = document.getElementById('modalNote').value;
+  c.scheduled_date = document.getElementById('modalDate').value || null;
+  c.status = document.getElementById('modalStatusSelect').value;
+  const { error } = await sb.from('cards').update({ caption: c.caption, note: c.note, scheduled_date: c.scheduled_date, status: c.status }).eq('id', c.id);
+  if (error) { showToast('error', 'Error al guardar'); return; }
+  closeCardModal();
+  renderBoard();
+  showToast('success', 'Guardado');
+}
+
+async function deleteCard() {
+  if (!confirm('¿Eliminar esta tarjeta?')) return;
+  await sb.from('cards').delete().eq('id', activeCardId);
+  cards = cards.filter(x => x.id !== activeCardId);
+  closeCardModal();
+  renderBoard();
+  showToast('info', 'Tarjeta eliminada');
+}
+
+async function quickStatus(id, status, e) {
+  if (e) e.stopPropagation();
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  c.status = status;
+  await sb.from('cards').update({ status }).eq('id', id);
+  renderBoard();
+  showToast('success', status === 'approved' ? 'Aprobado ✓' : status === 'rejected' ? 'Rechazado' : 'Movido');
+}
+
+function openNewCardModal() {
+  rebuildProjectFilter();
+  document.getElementById('ncTitle').value = '';
+  document.getElementById('ncStatus').value = 'pending';
+  document.getElementById('newCardModal').classList.add('open');
+  setTimeout(() => document.getElementById('ncTitle').focus(), 100);
+}
+function closeNewCardModal() { document.getElementById('newCardModal').classList.remove('open'); }
+
+async function saveNewCard() {
+  const title = document.getElementById('ncTitle').value.trim();
+  const clientId = document.getElementById('ncClient').value;
+  const status = document.getElementById('ncStatus').value;
+  if (!title) { showToast('error', 'Ponle un nombre a la tarjeta'); return; }
+  const { data, error } = await sb.from('cards').insert({ title, client_id: clientId || null, status, user_id: currentUser.id }).select().single();
+  if (error) { showToast('error', 'Error al crear'); return; }
+  cards.unshift(data);
+  closeNewCardModal();
+  renderBoard();
+  showToast('success', 'Tarjeta creada');
+}
+
+// ─── MEDIA ────────────────────────────────────────────────────────────────────
+async function loadMedia() {
+  const { data } = await sb.from('media').select('*').order('created_at', { ascending: false });
+  mediaItems = data || [];
+}
+
+async function uploadFile(file, clientId) {
+  const ext = file.name.split('.').pop();
+  const path = `${currentUser.id}/${clientId}/${Date.now()}.${ext}`;
+  const { error: upErr } = await sb.storage.from('petrova-media').upload(path, file, { upsert: false });
+  if (upErr) { showToast('error', 'Error al subir archivo'); return null; }
+  const { data: urlData } = sb.storage.from('petrova-media').getPublicUrl(path);
+  const isVideo = file.type.startsWith('video/');
+  const { data, error } = await sb.from('media').insert({
+    name: file.name, url: urlData.publicUrl, type: isVideo ? 'video' : 'image',
+    client_id: clientId, user_id: currentUser.id, storage_path: path
+  }).select().single();
+  if (error) return null;
+  return data;
+}
+
+// ─── SIDEBAR RENDER ──────────────────────────────────────────────────────────
+function renderSidebar(query) {
+  const body = document.getElementById('sidebarBody');
+  let html = '';
+  const filtered = query ? mediaItems.filter(m => m.name.toLowerCase().includes(query.toLowerCase())) : null;
+
+  clients.forEach(client => {
+    const items = (filtered || mediaItems).filter(m => m.client_id === client.id);
+    const open = true;
+    html += `<div class="folder">
+      <div class="folder-hdr" onclick="toggleFolder('f${client.id}','chev${client.id}')">
+        <span class="folder-icon">📁</span>
+        <span class="folder-name">${esc(client.name)}</span>
+        <span class="folder-cnt">${items.length}</span>
+        <span class="folder-chev open" id="chev${client.id}">›</span>
+      </div>
+      <div id="f${client.id}">`;
+    if (items.length > 0) {
+      html += '<div class="media-grid">';
+      items.forEach(m => {
+        const isVideo = m.type === 'video';
+        html += `<div class="media-item" draggable="true" ondragstart="startMediaDrag(event,'${m.id}')" title="${esc(m.name)}">`;
+        if (isVideo) {
+          html += `<video src="${m.url}" muted></video><div class="media-badge">▶ VID</div>`;
+        } else {
+          html += `<img src="${m.url}" loading="lazy" alt="${esc(m.name)}"><div class="media-badge">IMG</div>`;
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += `<div class="upload-zone" title="Subir archivos para ${esc(client.name)}">
+      <input type="file" accept="image/*,video/*" multiple onchange="handleUpload(event,'${client.id}')">
+      <div class="upload-zone-text"><span>+ Subir</span> fotos/videos</div>
+      <div class="upload-progress" id="prog${client.id}"><div class="upload-progress-bar" id="progbar${client.id}" style="width:0%"></div></div>
+    </div>`;
+    html += '</div></div>';
+  });
+
+  html += `<button class="new-client-btn" onclick="openNewClientModal()">+ Nuevo cliente</button>`;
+
+  if (clients.length === 0) {
+    html = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">
+      <div style="font-size:28px;margin-bottom:8px;opacity:0.4;">📂</div>
+      Crea un cliente para empezar
+    </div>` + html;
+  }
+
+  body.innerHTML = html;
+}
+
+function filterMedia(q) { renderSidebar(q || undefined); }
+
+function toggleFolder(fId, chevId) {
+  const el = document.getElementById(fId);
+  const ch = document.getElementById(chevId);
+  if (el.style.display === 'none') { el.style.display = 'block'; ch.classList.add('open'); }
+  else { el.style.display = 'none'; ch.classList.remove('open'); }
+}
+
+async function handleUpload(e, clientId) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const progEl = document.getElementById('prog' + clientId);
+  const progBar = document.getElementById('progbar' + clientId);
+  if (progEl) progEl.style.display = 'block';
+  for (let i = 0; i < files.length; i++) {
+    if (progBar) progBar.style.width = Math.round(((i+1)/files.length)*100) + '%';
+    const result = await uploadFile(files[i], clientId);
+    if (result) mediaItems.unshift(result);
+  }
+  if (progEl) setTimeout(() => { progEl.style.display = 'none'; }, 800);
+  renderSidebar();
+  showToast('success', `${files.length} archivo(s) subido(s)`);
+  e.target.value = '';
+}
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+function startMediaDrag(e, mediaId) {
+  dragPayload = { type: 'media', id: mediaId };
+  draggingCardId = null;
+  e.dataTransfer.effectAllowed = 'copy';
+}
+
+function laneEnter(e) { e.currentTarget.classList.add('drag-over'); }
+function laneLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+async function dropOnLane(e, status) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (dragPayload && dragPayload.type === 'media') {
+    const media = mediaItems.find(m => m.id === dragPayload.id);
+    if (!media) return;
+    const { data, error } = await sb.from('cards').insert({
+      title: media.name.replace(/\.[^.]+$/, ''),
+      media_id: media.id, client_id: media.client_id,
+      status, user_id: currentUser.id
+    }).select().single();
+    if (!error && data) { cards.unshift(data); renderBoard(); showToast('success', 'Tarjeta añadida'); }
+    dragPayload = null;
+  } else if (draggingCardId) {
+    await quickStatus(draggingCardId, status, null);
+    draggingCardId = null;
+  }
+}
+
+function startCardDrag(e, id) {
+  draggingCardId = id;
+  dragPayload = null;
+  e.dataTransfer.effectAllowed = 'move';
+  e.stopPropagation();
+}
+
+// ─── BOARD RENDER ─────────────────────────────────────────────────────────────
+function renderBoard() {
+  const statuses = ['pending','review','approved','rejected'];
+  statuses.forEach(st => {
+    const lane = document.getElementById('lane-' + st);
+    const filtered = cards.filter(c => {
+      if (c.status !== st) return false;
+      if (filterClient !== 'all' && c.client_id !== filterClient) return false;
+      return true;
+    });
+    document.getElementById('cnt-' + st).textContent = filtered.length;
+    if (filtered.length === 0) {
+      lane.innerHTML = '<div class="drop-hint">Arrastra medios aquí</div>';
+      return;
+    }
+    lane.innerHTML = filtered.map(c => {
+      const media = mediaItems.find(m => m.id === c.media_id);
+      const client = clients.find(cl => cl.id === c.client_id);
+      const isVideo = media && media.type === 'video';
+      const thumbHtml = media
+        ? (isVideo
+            ? `<video src="${media.url}" muted></video><div class="video-badge">▶ Reel/Video</div>`
+            : `<img src="${media.url}" loading="lazy" alt="">`)
+        : `<div class="kcard-thumb-placeholder">🖼️</div>`;
+      const noteHtml = c.note ? `<div class="kcard-note">🔒 ${esc(c.note.substring(0,55))}${c.note.length>55?'…':''}</div>` : '';
+      const dateHtml = c.scheduled_date ? `<div class="kcard-date">📅 ${formatDate(c.scheduled_date)}</div>` : '';
+      const notApproved = c.status !== 'approved';
+      const notRejected = c.status !== 'rejected';
+      return `<div class="kcard" draggable="true" ondragstart="startCardDrag(event,'${c.id}')" onclick="openCard('${c.id}')">
+        <div class="kcard-thumb">${thumbHtml}</div>
+        <div class="kcard-body">
+          <div class="kcard-title">${esc(c.title)}</div>
+          <div class="kcard-meta">👤 ${esc(client ? client.name : '—')}</div>
+          ${dateHtml}
+        </div>
+        ${noteHtml}
+        <div class="kcard-actions">
+          ${notApproved ? `<button class="kcard-btn approve" onclick="quickStatus('${c.id}','approved',event)">✓ Aprobar</button>` : ''}
+          ${notRejected ? `<button class="kcard-btn reject" onclick="quickStatus('${c.id}','rejected',event)">✕</button>` : ''}
+          ${!notApproved ? `<button class="kcard-btn" onclick="quickStatus('${c.id}','pending',event)" style="font-size:10px;">↩ Mover</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function applyFilter() {
+  filterClient = document.getElementById('projectFilter').value;
+  renderBoard();
+}
+
+// ─── CARD MODAL ───────────────────────────────────────────────────────────────
+const statusLabels = { pending:'Pendiente', review:'En revisión', approved:'Aprobado', rejected:'Rechazado' };
+const statusClasses = { pending:'sb-pending', review:'sb-review', approved:'sb-approved', rejected:'sb-rejected' };
+
+function openCard(id) {
+  activeCardId = id;
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  const media = mediaItems.find(m => m.id === c.media_id);
+  const client = clients.find(cl => cl.id === c.client_id);
+  document.getElementById('modalTitle').textContent = c.title;
+  document.getElementById('modalClient').textContent = client ? client.name : '—';
+  document.getElementById('modalCaption').value = c.caption || '';
+  document.getElementById('modalNote').value = c.note || '';
+  document.getElementById('modalDate').value = c.scheduled_date || '';
+  document.getElementById('modalStatusSelect').value = c.status;
+  const sb2 = document.getElementById('modalStatusBadge');
+  sb2.textContent = statusLabels[c.status];
+  sb2.className = 'status-badge ' + statusClasses[c.status];
+  const thumb = document.getElementById('modalThumb');
+  if (media) {
+    thumb.innerHTML = media.type === 'video'
+      ? `<video src="${media.url}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
+      : `<img src="${media.url}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+  } else { thumb.innerHTML = '<div style="font-size:48px;opacity:0.3;">🖼️</div>'; }
+  document.getElementById('cardModal').classList.add('open');
+}
+
+function closeCardModalBg(e) { if (e.target === document.getElementById('cardModal')) closeCardModal(); }
+function closeCardModal() {
+  document.getElementById('cardModal').classList.remove('open');
+  activeCardId = null;
+}
+
+// ─── CALENDAR ─────────────────────────────────────────────────────────────────
+function renderCalendar() {
+  const base = new Date(2026, 4 + calOffset, 1);
+  const y = base.getFullYear(), m = base.getMonth();
+  document.getElementById('calMonth').textContent = `${MONTHS[m]} ${y}`;
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  let html = '';
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="cal-cell other-month"><div class="cal-num">${prevDays - i}</div></div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d === 18 && m === 4 && y === 2026 && calOffset === 0;
+    const dayCards = cards.filter(c => c.scheduled_date === ds);
+    html += `<div class="cal-cell${isToday?' today':''}"><div class="cal-num">${d}</div>`;
+    dayCards.forEach(c => {
+      html += `<div class="cal-event ${c.status}" onclick="openCard('${c.id}')">${esc(c.title.substring(0,18))}</div>`;
+    });
+    html += '</div>';
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function changeMonth(dir) { calOffset += dir; renderCalendar(); }
+
+// ─── VIEWS ────────────────────────────────────────────────────────────────────
+function switchView(view, btn) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('kanbanView').style.display = view === 'kanban' ? 'flex' : 'none';
+  document.getElementById('calendarView').style.display = view === 'calendar' ? 'flex' : 'none';
+  if (view === 'calendar') renderCalendar();
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function exportReport() {
+  const rows = [['Título','Cliente','Estado','Caption','Fecha programada','Nota interna']];
+  cards.forEach(c => {
+    const client = clients.find(cl => cl.id === c.client_id);
+    rows.push([c.title, client ? client.name : '—', statusLabels[c.status] || c.status, c.caption || '', c.scheduled_date || '', c.note || '']);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+  a.download = `petrova-board-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('success', 'Reporte exportado');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+function showToast(type, msg) {
+  const t = document.getElementById('toast');
+  const dot = document.getElementById('toastDot');
+  document.getElementById('toastMsg').textContent = msg;
+  dot.className = 'toast-dot ' + type;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
